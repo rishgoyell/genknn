@@ -27,7 +27,7 @@ for i in datareader:
 Xtrain = np.zeros([60000, 28, 28], dtype=uint8)
 Ytrain = np.zeros([60000, 1], dtype=uint8)
 
-M = 1000
+M = 100
 N = 60000
 D1 = 100
 D2 = 28*28                                                                                                                                       
@@ -71,8 +71,18 @@ qc = Categorical(logits=tf.Variable(tf.zeros([N,M])))
                                                                                                                                               
 inference = ed.KLqp({mu: qmu, c: qc}, data={x: Xtrain, y: Ytrain})                                                                               
 #  , z: qz, wy: qwy, wx: qwx                                                                                                                     
-inference.run(n_iter=1000, n_print=100, n_samples=128) 
+inference.run(n_iter=2000, n_print=100, n_samples=256)
 
+sess = ed.get_session()
+print("Inferred prototypes axes:")
+
+
+zproto = sess.run(qmu.mean())
+dictionary = sess.run(qwx.mean())
+dictionary = np.matmul(zproto,dictionary.transpose())*Xscale+Xmean
+np.place(dictionary, dictionary<0, 0)
+for i in range(dictionary.shape[0]):
+    utils.save(dictionary[i,:].reshape((28,28)), str(i)+'.png')
 
 
 
