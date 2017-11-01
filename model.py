@@ -26,8 +26,8 @@ data = []
 for i in datareader:
     data.append(i)
 
-Xtrain = np.zeros([60000, 28*28], dtype=uint8)
-Ytrain = np.zeros([60000, 1], dtype=uint8)
+Xtrain = np.zeros([60000, 28*28])
+Ytrain = np.zeros([60000])
 
 M = 100
 N = 60000
@@ -105,7 +105,7 @@ if inference == 'EM':
     qsigmasq = PointMass(params=tf.Variable(tf.ones([M,D1])))
     
     inference_e = ed.KLqp({z:qz,c:qc}, data={x: data.X, y: data.Y, mu:qmu, wx:qwx, wy:qwy, sigmasq:qsigmasq})
-    inference_m = ed.MAP({mu:qmu, wx:qwx, wy:qwy, sigmasq:qsigmasq}, data={x: data.X, y: data.Y})
+    inference_m = ed.MAP({mu:qmu, wx:qwx, wy:qwy, sigmasq:qsigmasq}, data={x: Xtrain, y: Ytrain})
 
     inference_e.initialize(optimizer = tf.train.AdamOptimizer(learning_rate=1e-3))
     inference_m.initialize()
