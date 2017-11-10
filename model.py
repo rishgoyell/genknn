@@ -72,11 +72,11 @@ else:
     components = [
     MultivariateNormalDiag(mu[k], sigmasq[k], sample_shape=N)
     for k in range(M)]
-    z = Mixture(cat=cat, components=components,sample_shape=N)
+    z = Mixture(cat=cat, components=components, sample_shape=N)
     wx = Normal(loc=tf.zeros([D2, D1]), scale=tf.ones([D2, D1]))
-    wy = Normal(loc=tf.zeros([1, D1]), scale=tf.ones([1, D1]))
+    wy = Normal(loc=tf.zeros([10, D1]), scale=tf.ones([10, D1]))
     x = Normal(loc=tf.matmul(z, wx, transpose_b=True), scale=tf.ones([N, D2]))
-    y = Bernoulli(logits=tf.matmul(z, wy, transpose_b=True))
+    y = Categorical(logits=tf.matmul(z, wy, transpose_b=True))
 
 
       
@@ -120,7 +120,7 @@ if inference == 'EM':
     qwy = PointMass(params=tf.Variable(tf.random_normal([10, D1])))
     qsigmasq = PointMass(params=tf.Variable(tf.ones([M,D1])))
     
-    inference_e = ed.KLqp({z:qz}, data={x: data.X, y: data.Y, mu:qmu, wx:qwx, wy:qwy, sigmasq:qsigmasq})
+    inference_e = ed.KLqp({z:qz}, data={x:Xtrain, y:Ytrain, mu:qmu, wx:qwx, wy:qwy, sigmasq:qsigmasq})
     inference_m = ed.MAP({mu:qmu, wx:qwx, wy:qwy, sigmasq:qsigmasq}, data={x: Xtrain, y: Ytrain, z:qz})
 
     inference_e.initialize(optimizer = tf.train.AdamOptimizer(learning_rate=1e-3))
@@ -131,8 +131,8 @@ if inference == 'EM':
     
     for i in range(1000):
         for j in range(10):
-            info_dict_m = inference_m.update()
-        info_dict_e = inference_e.update()
+            info_dict_e = inference_e.update()
+        info_dict_m = inference_m.update()
         inference_m.print_progress(info_dict_m)
 
 

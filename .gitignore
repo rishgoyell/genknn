@@ -1,4 +1,5 @@
 MNIST
 __pycache__
 *pyc
+dataset*
 .ipynb_checkpoint*
