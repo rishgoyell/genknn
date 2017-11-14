@@ -11,11 +11,12 @@ import numpy as np
 import six
 import tensorflow as tf
 import pickle as pk
+from sklearn.cluster import KMeans
 
 from edward.models import (
     Categorical, Dirichlet, Empirical, InverseGamma,
     MultivariateNormalDiag, Normal, ParamMixture, Bernoulli, 
-    Multinomial, PointMass)
+    Multinomial, PointMass, Mixture)
 
 import utils
 plt.style.use('ggplot')
@@ -39,11 +40,11 @@ for i in range(N):
     Ytrain[i] = data[i][0]                                                                                                                   
 
 print("Centering Data........")
-Xmean = Xtrain.mean(axis=0)
-Xscale = Xtrain.std(axis=0)
-np.place(Xscale, Xscale==0, -1)
-Xtrain = (Xtrain-Xmean)/Xscale
-np.place(Xscale, Xscale==-1, 0)
+# Xmean = Xtrain.mean(axis=0)
+# Xscale = Xtrain.std(axis=0)
+# np.place(Xscale, Xscale==0, -1)
+# Xtrain = (Xtrain-Xmean)/Xscale
+# np.place(Xscale, Xscale==-1, 0)
 
 inference = 'EM'
 model = 'collapsed'
@@ -123,7 +124,9 @@ if inference == 'EM':
     if initialization == 'random':
         qmu = PointMass(params=tf.Variable(tf.random_normal([M, D1])))
     else:
+        print("Running KMeans...........")
         kmeans = KMeans(n_clusters=M, random_state=0, n_init=5, n_jobs=-2).fit(Xtrain)
+        print("Means found and model initialized...........")
         xinit = kmeans.cluster_centers_
         zinit = np.matmul(xinit, np.linalg.pinv(wxinit).transpose()).astype(np.float32)
         qmu = PointMass(params=tf.Variable(zinit))
@@ -131,7 +134,7 @@ if inference == 'EM':
     inference_e = ed.KLqp({z:qz}, data={x:Xtrain, y:Ytrain, mu:qmu, wx:qwx, wy:qwy, sigmasq:qsigmasq})
     inference_m = ed.MAP({mu:qmu, wx:qwx, wy:qwy, sigmasq:qsigmasq}, data={x: Xtrain, y: Ytrain, z:qz})
 
-    inference_e.initialize(optimizer = tf.train.AdamOptimizer(learning_rate=1e-3))
+    inference_e.initialize(optimizer = tf.train.AdamOptimizer(learning_rate=1e-2))
     inference_m.initialize()
 
     init = tf.global_variables_initializer()
@@ -147,7 +150,7 @@ if inference == 'EM':
 
 sess = ed.get_session()
 
-if inference in ['VI', 'EM']:
+# if inference in ['VI', 'EM']:
     # probs = sess.run(qc.probs)
     # cluster = np.argmax(probs, axis=1)
     # clusterlabels = np.zeros([M, 10])
@@ -161,14 +164,14 @@ if inference in ['VI', 'EM']:
 zproto = sess.run(qmu.params)
 weightx = sess.run(qwx.params)
 weighty = sess.run(qwy.params)
-xcenters = np.matmul(zproto,weightx.transpose())*Xscale+Xmean
+xcenters = np.matmul(zproto,weightx.transpose())
 ycenters = np.matmul(zproto, weighty.transpose())
 xlist = []
 ylist = []
 if initialization == 'kmeans':
     initlist = []
 
-for i in range(xcenters.shape[0]):
+for i in range(M):
     # if inference in ['VI', 'EM']:
     #     print(clusterlabels[i,:].astype(int))
     ylist.append(ycenters[i,:])
@@ -178,7 +181,7 @@ for i in range(xcenters.shape[0]):
     # utils.save(xcenters[i,:].reshape((28,28)), 'MNIST/xprotoMAP/'+str(i)+'.png')
 
 with open('collapsed'+'_'+str(M)+'_'+str(D1)+'.npz','wb') as outfile:
-    pk.dump([initlist, xlist, ylist], outfile)
+    pk.dump(xinit, outfile)
 
 # dictionary = np.matmul(zproto,dictionary.transpose())*Xscale+Xmean
 # np.place(dictionary, dictionary<0, 0)
