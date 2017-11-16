@@ -23,7 +23,7 @@ import utils
 plt.style.use('ggplot')
                                                                                                                                              
 Xtrain,Ytrain = utils.prepare_data('training')                                                                                                                   
-Xtrain, Ytrain = utils.onevsone(3,8,Xtrain,Ytrain)
+Xtrain, Ytrain = utils.onevsone(7,9,Xtrain,Ytrain)
 
 N = Xtrain.shape[0]
 M = 10
@@ -44,7 +44,7 @@ print("Centering Data........")
 
 inference = 'EM'
 model = 'collapsed'
-initialization = 'kmeans'
+initialization = 'random'
 
 
 # model
@@ -172,9 +172,7 @@ else:
     uprob = np.exp(np.matmul(zproto,weighty.transpose()))
     ycenters = uprob/np.expand_dims(np.sum(uprob, axis=1), axis=1)
     del uprob
-print(xcenters.shape)
-print(ycenters.shape)
-print(xinit.shape)
+
 xlist = []
 ylist = []
 if initialization == 'kmeans':
@@ -193,9 +191,12 @@ if initialization == 'kmeans':
 #         pk.dump([xlist, ylist], outfile)
 
 Xtest, Ytest = utils.prepare_data(dataset='testing')
-Xtest, Ytest = utils.onevsone(3,8,Xtest,Ytest)
+Xtest, Ytest = utils.onevsone(7,9,Xtest,Ytest)
 utils.evaluate(Xtest, Ytest, zproto, weightx, weighty, ycenters,K)
-utils.visualize(xcenters, ycenters, xinit)
+if initialization=='kmeans':
+    utils.visualize(xcenters, ycenters, xinit)
+else:
+    utils.visualize(xcenters, ycenters,mode='random')
 for k in [1,2,4,8]:
     utils.nnfull(Xtrain, Ytrain, Xtest, Ytest, k)
 

@@ -92,8 +92,8 @@ def onevsone(a,b,X,Y):
     B = np.asarray(Y==b)
     C = np.where((A+B)==True)
     temp = Y[C]
-    np.place(temp, temp==3, 0)
-    np.place(temp, temp==8, 1)
+    np.place(temp, temp==a, 0)
+    np.place(temp, temp==b, 1)
     return X[C][:200,:], temp[:200]
 
 def onevsall(a,X,Y):
@@ -159,7 +159,7 @@ def nnfull(Xtrain, Ytrain, Xtest, Ytest,k):
     print(k,float(np.sum(neigh.predict(Xtest)==Ytest))/Ytest.shape[0],roc_auc_score(Ytest, neigh.predict_proba(Xtest)[:,1]))
 
 
-def visualize(xcenters,ycenters, xinit, mode='kmeans'):
+def visualize(xcenters,ycenters, xinit=None, mode='kmeans'):
     import scipy.misc
     import pickle
     # with open(filename,'rb') as infile:
