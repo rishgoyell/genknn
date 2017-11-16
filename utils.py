@@ -1,6 +1,9 @@
 import os
 import struct
 import numpy as np
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neighbors import NearestNeighbors
+from sklearn.metrics import roc_auc_score
 
 """
 Loosely inspired by http://abel.ee.ucla.edu/cvxopt/_downloads/mnist.py
@@ -38,6 +41,23 @@ def readmnist(dataset = "training", path = "."):
     for i in xrange(len(lbl)):
         yield get_img(i)
 
+
+def prepare_data(dataset='training'):
+    print("Reading data............")
+    datareader = readmnist(path='MNIST', dataset=dataset)
+    data = []
+    for i in datareader:
+        data.append(i)
+
+    N = len(data)
+    X = np.zeros([N, 28*28])
+    Y = np.zeros([N])
+    for i in range(N):                                                                                                                               
+        X[i] = data[i][1].flatten()                                                                                                         
+        Y[i] = data[i][0]
+    return X, Y
+
+
 def show(image):
     """
     Render a given numpy.uint8 2D array of pixel data.
@@ -66,6 +86,89 @@ def save(image, name):
     ax.yaxis.set_ticks_position('left')
     pyplot.savefig(name)
 
+
+def onevsone(a,b,X,Y):
+    A = np.asarray(Y==a)
+    B = np.asarray(Y==b)
+    C = np.where((A+B)==True)
+    temp = Y[C]
+    np.place(temp, temp==3, 0)
+    np.place(temp, temp==8, 1)
+    return X[C][:200,:], temp[:200]
+
+def onevsall(a,X,Y):
+    A = Y[np.where(Y==a)]
+    B = Y[np.where(Y!=a)]
+    num = A[0].shape[0]
+    np.random.shuffle(B[0])
+    C = np.concatenate((A[0], B[0][:2*num]), axis=0)
+    np.random.shuffle(C)
+    temp = Y[C]
+    np.place(temp, temp==a, 0)
+    np.place(temp, temp!=a, 1)
+    return X[C][:100,:], temp[:100]
+
+
+def evaluate(Xtest, Ytest, zproto, weightx, weighty, ycenters, numclasses):
+
+    invWx = np.linalg.pinv(weightx)
+    ztest = np.matmul(Xtest, invWx.transpose())
+
+    if numclasses == 2:
+        ymat = 1/(1+np.exp(-np.matmul(ztest,weighty.transpose())))
+    else:
+        uprob = np.exp(np.matmul(ztest,weighty.transpose()))
+        ymat = uprob/np.expand_dims(np.sum(uprob, axis=1), axis=1)
+        del uprob
+    
+    for k in [1,2,4,8]:
+        print(k)
+        nbrs = NearestNeighbors(n_neighbors=k, algorithm='ball_tree').fit(zproto)
+        distances, indices = nbrs.kneighbors(ztest)
+        invdist = np.reciprocal(distances)
+        probdist = invdist/np.expand_dims(invdist.sum(axis=1), axis=1)
+        
+        if numclasses==2:
+            ynn = np.zeros([Xtest.shape[0],1])
+        else:
+            ynn = np.zeros([Xtest.shape[0],numclasses])
+            countnn = 0
+            countmat = 0
+        
+        for i in range(Xtest.shape[0]):
+            for j in range(k):
+                ynn[i] = ynn[i]+ycenters[indices[i,j]]*probdist[i,j]
+            if numclasses > 2:
+                if np.argmax(ynn[i])==Ytest[i]:
+                    countnn = countnn + 1
+                if np.argmax(ymat[i])==Ytest[i]:
+                    countmat = countmat + 1
+    #             for i in range(Xtest.shape[0]):
+    #                 print(Ytest[i],ymat[i],ynn[i])
+        total = ynn.shape[0]
+        if numclasses == 2:
+            print float(np.sum((ynn[:,0]>0.5)==Ytest))/total, float(np.sum((ymat[:,0]>0.5)==Ytest))/total
+            print roc_auc_score(Ytest,ynn), roc_auc_score(Ytest,ymat),"\n"
+        else:
+            print countnn/total, countmat/total
+
+
+def nnfull(Xtrain, Ytrain, Xtest, Ytest,k):
+    neigh = KNeighborsClassifier(n_neighbors=k)
+    neigh.fit(Xtrain, Ytrain[:,0])
+    print(k,float(np.sum(neigh.predict(Xtest)==Ytest))/Ytest.shape[0],roc_auc_score(Ytest, neigh.predict_proba(Xtest)[:,1]))
+
+
+def visualize(xcenters,ycenters, xinit, mode='kmeans'):
+    import scipy.misc
+    import pickle
+    # with open(filename,'rb') as infile:
+    #     data = pickle.load(infile)
+    for i in range(xcenters.shape[0]):
+        if mode == 'kmeans':
+            scipy.misc.imsave('kmeans'+str(i+1)+'.png', xinit[i,:].reshape((28,28)))
+        scipy.misc.imsave('learned'+str(i+1)+'.png', xcenters[i,:].reshape((28,28)))
+        print i, ycenters[i,:]
 
 
 class dataset(object):
