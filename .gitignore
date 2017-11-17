@@ -6,3 +6,4 @@ dataset*
 *.npz
 *.pkl
 *.png
+*.txt

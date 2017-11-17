@@ -92,20 +92,34 @@ def onevsone(a,b,X,Y):
     B = np.asarray(Y==b)
     C = np.where((A+B)==True)
     temp = Y[C]
-    np.place(temp, temp==a, 0)
-    np.place(temp, temp==b, 1)
+    if b!=0:
+        np.place(temp, temp==a, 0)
+        np.place(temp, temp==b, 1)
+    else:
+        np.place(temp, temp==a,-1)
+        np.place(temp, temp==b, 1)
+        np.place(temp, temp==-1, 0)
+
     return X[C][:200,:], temp[:200]
 
 def onevsall(a,X,Y):
-    A = Y[np.where(Y==a)]
-    B = Y[np.where(Y!=a)]
+    A = np.where(Y==a)
+    B = np.where(Y!=a)
     num = A[0].shape[0]
     np.random.shuffle(B[0])
-    C = np.concatenate((A[0], B[0][:2*num]), axis=0)
+    C = np.concatenate((A[0], B[0][:num]), axis=0)
     np.random.shuffle(C)
     temp = Y[C]
-    np.place(temp, temp==a, 0)
-    np.place(temp, temp!=a, 1)
+    print(temp)
+    if a!=0:
+        np.place(temp, temp!=a, 0)
+        np.place(temp, temp==a, 1)
+    else:
+        np.place(temp, temp!=a, -1)
+        np.place(temp, temp==a, 1)
+        np.place(temp, temp==-1, 0)
+
+    print(temp)
     return X[C][:100,:], temp[:100]
 
 
@@ -159,7 +173,7 @@ def nnfull(Xtrain, Ytrain, Xtest, Ytest,k):
     print(k,float(np.sum(neigh.predict(Xtest)==Ytest))/Ytest.shape[0],roc_auc_score(Ytest, neigh.predict_proba(Xtest)[:,1]))
 
 
-def visualize(xcenters,ycenters, xinit=None, mode='kmeans'):
+def visualize(xcenters,ycenters, xinit=None, class1=None, mode='kmeans'):
     import scipy.misc
     import pickle
     # with open(filename,'rb') as infile:
@@ -167,7 +181,7 @@ def visualize(xcenters,ycenters, xinit=None, mode='kmeans'):
     for i in range(xcenters.shape[0]):
         if mode == 'kmeans':
             scipy.misc.imsave('kmeans'+str(i+1)+'.png', xinit[i,:].reshape((28,28)))
-        scipy.misc.imsave('learned'+str(i+1)+'.png', xcenters[i,:].reshape((28,28)))
+        scipy.misc.imsave('learned_'+str(class1)+'_'+str(i+1)+'.png', xcenters[i,:].reshape((28,28)))
         print i, ycenters[i,:]
 
 
